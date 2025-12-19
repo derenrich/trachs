@@ -24,6 +24,9 @@ services:
       - AUTO_GENERATE_DEVICE_IDS=${AUTO_GENERATE_DEVICE_IDS:-true}
       - TRACCAR_ENABLED=${TRACCAR_ENABLED:-true}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # User/Group ID for file permissions (useful for TrueNAS, Synology, etc.)
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
     
     volumes:
       # Mount your secrets.json file

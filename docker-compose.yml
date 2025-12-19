@@ -38,6 +38,10 @@ services:
       
       # Log level: DEBUG, INFO, WARNING, ERROR
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # User/Group ID for file permissions (useful for NAS systems)
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
     
     # Mount the secrets file
     volumes:

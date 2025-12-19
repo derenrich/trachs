@@ -31,10 +31,12 @@ FROM python:3.13-slim
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash appuser
+# Create non-root user with default UID/GID (can be changed at runtime)
+RUN groupadd -g 1000 appuser && \
+    useradd -u 1000 -g appuser --create-home --shell /bin/bash appuser
 
 WORKDIR /app
 
@@ -60,12 +62,20 @@ ENV AUTO_GENERATE_DEVICE_IDS=true
 ENV TRACCAR_ENABLED=true
 ENV LOG_LEVEL=INFO
 
-# Switch to non-root user
-USER appuser
+# Default PUID/PGID (can be overridden at runtime)
+ENV PUID=1000
+ENV PGID=1000
+
+# Copy and set up entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Health check - just verify Python can import the main module
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import main" || exit 1
+
+# Use entrypoint to handle user switching
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Run the service
 CMD ["python", "main.py"]
