@@ -13,7 +13,36 @@ A service that polls Google Find My Device for location data and forwards it to 
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### Deploy from Pre-built Image (Recommended for servers)
+
+1. **On your server, create a directory and download the compose file:**
+
+   ```bash
+   mkdir trachs && cd trachs
+   curl -O https://raw.githubusercontent.com/derenrich/trachs/main/docker-compose.prod.yml
+   curl -O https://raw.githubusercontent.com/derenrich/trachs/main/.env.example
+   mv .env.example .env
+   ```
+
+2. **Copy your `secrets.json` to the server:**
+
+   ```bash
+   scp /path/to/secrets.json yourserver:~/trachs/secrets.json
+   ```
+
+3. **Edit `.env` with your configuration:**
+
+   ```bash
+   TRACCAR_URL=http://your-traccar-server:5055
+   DEVICE_MAPPING={"Pixel 8 Pro": "mypixel", "Tag": "mytag"}
+   ```
+
+4. **Start the service:**
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d
+   ```
+
+### Using Docker Compose (Local Development)
 
 1. **Copy the example environment file:**
 
@@ -102,6 +131,23 @@ export SECRETS_PATH=./src/Auth/secrets.json
 # Run
 uv run python ./src/main.py
 ```
+
+## Docker Image
+
+The Docker image is automatically built and published to GitHub Container Registry on every push to main.
+
+**Pull the latest image:**
+
+```bash
+docker pull ghcr.io/derenrich/trachs:latest
+```
+
+**Available tags:**
+
+- `latest` - Latest build from main branch
+- `main` - Same as latest
+- `v1.0.0` - Specific version (when tagged)
+- `<sha>` - Specific commit
 
 ## License
 
