@@ -16,6 +16,9 @@ from ProtoDecoders import DeviceUpdate_pb2
 from ProtoDecoders.decoder import parse_device_update_protobuf
 from example_data_provider import get_example_data
 
+import logging
+logger = logging.getLogger(__name__)
+
 def create_location_request(canonic_device_id, fcm_registration_id, request_uuid):
 
     action_request = create_action_request(canonic_device_id, fcm_registration_id, request_uuid=request_uuid)
@@ -32,8 +35,7 @@ def create_location_request(canonic_device_id, fcm_registration_id, request_uuid
 
 def get_location_data_for_device(canonic_device_id, name):
 
-    print(f"[LocationRequest] Requesting location data for {name}...")
-
+    logger.info(f"[LocationRequest] Requesting location data for {name}...")
     result = None
     request_uuid = generate_random_uuid()
 
@@ -42,9 +44,8 @@ def get_location_data_for_device(canonic_device_id, name):
         device_update = parse_device_update_protobuf(response)
 
         if device_update.fcmMetadata.requestUuid == request_uuid:
-            print("[LocationRequest] Location request successful. Decrypting locations...")
+            logger.info("[LocationRequest] Location request successful. Decrypting locations...")
             result = parse_device_update_protobuf(response)
-            #print_device_update_protobuf(response)
 
     fcm_token = FcmReceiver().register_for_location_updates(handle_location_response)
 

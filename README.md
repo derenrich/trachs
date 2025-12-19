@@ -82,17 +82,17 @@ docker compose build
 
 All configuration is done via environment variables:
 
-| Variable                   | Default                 | Description                                 |
-| -------------------------- | ----------------------- | ------------------------------------------- |
-| `TRACCAR_URL`              | `http://localhost:5055` | URL of Traccar's OsmAnd protocol endpoint   |
-| `SECRETS_PATH`             | `/app/secrets.json`     | Path to secrets.json inside container       |
-| `POLL_INTERVAL_SECONDS`    | `300`                   | How often to poll for locations (5 minutes) |
-| `REQUEST_TIMEOUT_SECONDS`  | `60`                    | HTTP request timeout                        |
-| `DEVICE_MAPPING`           | `{}`                    | JSON mapping of device names to Traccar IDs |
-| `AUTO_GENERATE_DEVICE_IDS` | `true`                  | Auto-generate Traccar IDs from device names |
-| `TRACCAR_ENABLED`          | `true`                  | Set to `false` for dry-run mode             |
-| `LOG_LEVEL`                | `INFO`                  | Logging level (DEBUG, INFO, WARNING, ERROR) |
-| `PUID` and `PGID`          | `1000`                  | User and group IDs to run as                |
+| Variable                   | Default                 | Description                                  |
+| -------------------------- | ----------------------- | -------------------------------------------- |
+| `TRACCAR_URL`              | `http://localhost:5055` | URL of Traccar's OsmAnd protocol endpoint    |
+| `SECRETS_PATH`             | `/app/secrets.json`     | Path to secrets.json inside container        |
+| `POLL_INTERVAL_SECONDS`    | `900`                   | How often to poll for locations (15 minutes) |
+| `REQUEST_TIMEOUT_SECONDS`  | `60`                    | HTTP request timeout                         |
+| `DEVICE_MAPPING`           | `{}`                    | JSON mapping of device names to Traccar IDs  |
+| `AUTO_GENERATE_DEVICE_IDS` | `true`                  | Auto-generate Traccar IDs from device names  |
+| `TRACCAR_ENABLED`          | `true`                  | Set to `false` for dry-run mode              |
+| `LOG_LEVEL`                | `INFO`                  | Logging level (DEBUG, INFO, WARNING, ERROR)  |
+| `PUID` and `PGID`          | `1000`                  | User and group IDs to run as                 |
 
 ### Device Mapping
 
@@ -109,11 +109,11 @@ Or enable auto-generation (default) which creates IDs by lowercasing the device 
 
 ### Setting Up Traccar
 
-1. In Traccar, create a device for each tracker you want to monitor
+1. In Traccar, create a device for each tracker you want to monitor (make sure to note the unique IDs you set)
 2. Set the device's "Identifier" to match either:
    - The value in your `DEVICE_MAPPING`, or
    - The auto-generated ID from the device name
-3. Ensure port 5055 (OsmAnd protocol) is accessible
+3. Ensure port 5055 (OsmAnd protocol) is accessible from trachs
 
 ## Generating secrets.json
 
@@ -135,7 +135,7 @@ uv run python ./src/main.py
 
 ## Docker Image
 
-The Docker image is automatically built and published to GitHub Container Registry on every push to main.
+The Docker image is automatically built and published to GitHub Container Registry on every push to main. For that case you should use the prod docker-compose yaml.
 
 **Pull the latest image:**
 

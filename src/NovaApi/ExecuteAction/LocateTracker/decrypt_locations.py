@@ -17,7 +17,9 @@ from SpotApi.CreateBleDevice.config import mcu_fast_pair_model_id
 from SpotApi.CreateBleDevice.util import flip_bits
 from SpotApi.GetEidInfoForE2eeDevices.get_eid_info_request import get_eid_info
 from SpotApi.GetEidInfoForE2eeDevices.get_owner_key import get_owner_key
+import logging
 
+logger = logging.getLogger(__name__)
 
 def create_google_maps_link(latitude, longitude):
     try:  
@@ -144,15 +146,14 @@ def decrypt_location_response_locations(device_update_protobuf):
             longitude = proto_loc.longitude / 1e7
             altitude = proto_loc.altitude
 
-            print(f"Latitude: {latitude}")
-            print(f"Longitude: {longitude}")
-            print(f"Altitude: {altitude}")
-            print(f"Google Maps Link: {create_google_maps_link(latitude, longitude)}")
+            logger.info(f"Latitude: {latitude}")
+            logger.info(f"Longitude: {longitude}")
+            logger.info(f"Altitude: {altitude}")
+            logger.info(f"Google Maps Link: {create_google_maps_link(latitude, longitude)}")
             
-        print(f"Time: {datetime.datetime.fromtimestamp(loc.time).strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Status: {loc.status}")
-        print(f"Is Own Report: {loc.is_own_report}")
-        print("-" * 40)
+        logger.info(f"Time: {datetime.datetime.fromtimestamp(loc.time).strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info(f"Status: {loc.status}")
+        logger.info(f"Is Own Report: {loc.is_own_report}")
 
     return location_time_array
 

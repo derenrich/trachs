@@ -20,7 +20,7 @@ services:
       - SECRETS_PATH=/app/secrets/secrets.json
       
       # How often to poll for device locations (in seconds)
-      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-300}
+      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-900}
       
       # Timeout for HTTP requests (in seconds)
       - REQUEST_TIMEOUT_SECONDS=${REQUEST_TIMEOUT_SECONDS:-60}

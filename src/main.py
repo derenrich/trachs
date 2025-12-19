@@ -41,7 +41,7 @@ class Config:
         self.secrets_path = os.environ.get('SECRETS_PATH', '/app/secrets.json')
         
         # Optional with defaults
-        self.poll_interval_seconds = int(os.environ.get('POLL_INTERVAL_SECONDS', '300'))  # 5 minutes
+        self.poll_interval_seconds = int(os.environ.get('POLL_INTERVAL_SECONDS', '900'))
         self.request_timeout_seconds = int(os.environ.get('REQUEST_TIMEOUT_SECONDS', '60'))
         
         # Device name to Traccar ID mapping (JSON string)
@@ -111,6 +111,7 @@ async def send_to_traccar(
     longitude: float,
     altitude: float,
     timestamp: int,
+    is_own_report: bool,
     accuracy: Optional[float] = None
 ) -> bool:
     """Send location data to Traccar using the OsmAnd protocol."""
@@ -120,12 +121,17 @@ async def send_to_traccar(
         return True
     
     # Build the OsmAnd protocol URL
+
+    extras = dict()
+    extras['is_own_report'] = str(is_own_report)
+
     params = {
         'id': device_id,
         'lat': latitude,
         'lon': longitude,
         'timestamp': timestamp,  # Unix timestamp in seconds
         'altitude': altitude,
+        'extras': json.dumps(extras)
     }
     
     if accuracy is not None and accuracy > 0:
@@ -258,6 +264,7 @@ async def run_polling_loop(config: Config):
                         altitude=loc['altitude'],
                         timestamp=loc['timestamp'],
                         accuracy=loc['accuracy'],
+                        is_own_report=loc['is_own_report']
                     )
                 
                 elapsed = time.time() - start_time
