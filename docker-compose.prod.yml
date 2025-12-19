@@ -1,0 +1,37 @@
+# Trachs - Google Find My Device to Traccar Bridge
+# Docker Compose for running from published image
+#
+# Usage:
+#   1. Copy this file to your server
+#   2. Create a .env file (see .env.example)
+#   3. Place your secrets.json file in the same directory
+#   4. Run: docker compose up -d
+
+services:
+  trachs:
+    # Pull from GitHub Container Registry
+    # Replace 'derenrich' with your GitHub username if you fork this repo
+    image: ghcr.io/derenrich/trachs:latest
+    container_name: trachs
+    restart: unless-stopped
+    
+    environment:
+      - TRACCAR_URL=${TRACCAR_URL:-http://traccar:5055}
+      - SECRETS_PATH=/app/secrets/secrets.json
+      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-300}
+      - REQUEST_TIMEOUT_SECONDS=${REQUEST_TIMEOUT_SECONDS:-60}
+      - DEVICE_MAPPING=${DEVICE_MAPPING:-{}}
+      - AUTO_GENERATE_DEVICE_IDS=${AUTO_GENERATE_DEVICE_IDS:-true}
+      - TRACCAR_ENABLED=${TRACCAR_ENABLED:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    
+    volumes:
+      # Mount your secrets.json file
+      - ${SECRETS_FILE:-./secrets.json}:/app/secrets/secrets.json:ro
+    
+    networks:
+      - traccar-net
+
+networks:
+  traccar-net:
+    driver: bridge
