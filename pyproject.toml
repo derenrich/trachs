@@ -1,0 +1,25 @@
+[project]
+name = "trachs"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiohttp>=3.11.8",
+    "beautifulsoup4>=4.12.3",
+    "cryptography>=43.0.3",
+    "ecdsa>=0.19.0",
+    "frida>=16.5.6",
+    "gpsoauth>=1.1.1",
+    "h2>=4.1.0",
+    "http-ece>=1.1.0",
+    "httpx>=0.28.0",
+    "protobuf>=5.28.3",
+    "pycryptodomex>=3.21.0",
+    "pyscrypt>=1.6.2",
+    "pytz>=2024.2",
+    "requests>=2.32.3",
+    "selenium>=4.39.0",
+    "setuptools>=75.6.0",
+    "traccar-api>=0.3.0",
+]

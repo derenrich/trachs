@@ -1,0 +1,75 @@
+# Trachs - Google Find My Device to Traccar Bridge
+# Docker Compose configuration
+
+services:
+  trachs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: trachs:latest
+    container_name: trachs
+    restart: unless-stopped
+    
+    # Environment variables for configuration
+    environment:
+      # URL of your Traccar server's OsmAnd protocol endpoint
+      # Default Traccar OsmAnd port is 5055
+      - TRACCAR_URL=${TRACCAR_URL:-http://traccar:5055}
+      
+      # Path to secrets.json inside the container
+      - SECRETS_PATH=/app/secrets/secrets.json
+      
+      # How often to poll for device locations (in seconds)
+      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-300}
+      
+      # Timeout for HTTP requests (in seconds)
+      - REQUEST_TIMEOUT_SECONDS=${REQUEST_TIMEOUT_SECONDS:-60}
+      
+      # JSON mapping of device names to Traccar device IDs
+      # Example: {"My Phone": "phone123", "Pixel Watch": "watch456"}
+      - DEVICE_MAPPING=${DEVICE_MAPPING:-{}}
+      
+      # If true, auto-generate Traccar device IDs from device names
+      # when not explicitly mapped
+      - AUTO_GENERATE_DEVICE_IDS=${AUTO_GENERATE_DEVICE_IDS:-true}
+      
+      # Set to "false" for dry-run mode (logs but doesn't send to Traccar)
+      - TRACCAR_ENABLED=${TRACCAR_ENABLED:-true}
+      
+      # Log level: DEBUG, INFO, WARNING, ERROR
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    
+    # Mount the secrets file
+    volumes:
+      - ${SECRETS_FILE:-./src/Auth/secrets.json}:/app/secrets/secrets.json:ro
+    
+    # Connect to the same network as Traccar if running together
+    networks:
+      - traccar-net
+    
+    # Dependencies (if running Traccar in the same compose file)
+    # depends_on:
+    #   - traccar
+
+  # Optional: Include Traccar server in the same compose file
+  # Uncomment this section if you want to run Traccar alongside trachs
+  #
+  # traccar:
+  #   image: traccar/traccar:latest
+  #   container_name: traccar
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8082:8082"     # Web UI
+  #     - "5055:5055"     # OsmAnd protocol
+  #   volumes:
+  #     - traccar-data:/opt/traccar/data
+  #     - ./traccar.xml:/opt/traccar/conf/traccar.xml:ro
+  #   networks:
+  #     - traccar-net
+
+networks:
+  traccar-net:
+    driver: bridge
+
+# volumes:
+#   traccar-data:
