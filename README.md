@@ -92,6 +92,7 @@ All configuration is done via environment variables:
 | `AUTO_GENERATE_DEVICE_IDS` | `true`                  | Auto-generate Traccar IDs from device names |
 | `TRACCAR_ENABLED`          | `true`                  | Set to `false` for dry-run mode             |
 | `LOG_LEVEL`                | `INFO`                  | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `PUID` and `PGID`          | `1000`                  | User and group IDs to run as                |
 
 ### Device Mapping
 
@@ -141,13 +142,6 @@ The Docker image is automatically built and published to GitHub Container Regist
 ```bash
 docker pull ghcr.io/derenrich/trachs:latest
 ```
-
-**Available tags:**
-
-- `latest` - Latest build from main branch
-- `main` - Same as latest
-- `v1.0.0` - Specific version (when tagged)
-- `<sha>` - Specific commit
 
 ## License
 
