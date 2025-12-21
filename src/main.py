@@ -242,7 +242,8 @@ async def run_polling_loop(config: Config):
     # This avoids "Cannot run the event loop while another loop is running" errors
     executor = ThreadPoolExecutor(max_workers=1)
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(headers={"User-Agent": "Trachs"}) as client:
+        last_timestamps = dict()
         while True:
             try:
                 logger.info("Starting polling cycle...")
@@ -255,14 +256,21 @@ async def run_polling_loop(config: Config):
                 
                 # Send each location to Traccar
                 for loc in locations:
+                    device_id = loc['traccar_id']
+                    ts = loc['timestamp']
+
+                    if device_id in last_timestamps and ts <= last_timestamps[device_id]:
+                        logger.info(f"Skipping older location for device {device_id}")
+                        continue
+                    last_timestamps[device_id] = ts
                     await send_to_traccar(
                         client=client,
                         config=config,
-                        device_id=loc['traccar_id'],
+                        device_id=device_id,
                         latitude=loc['latitude'],
                         longitude=loc['longitude'],
                         altitude=loc['altitude'],
-                        timestamp=loc['timestamp'],
+                        timestamp=ts,
                         accuracy=loc['accuracy'],
                         is_own_report=loc['is_own_report']
                     )
