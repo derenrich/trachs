@@ -78,6 +78,7 @@ class Config:
             # Create a stable ID from device name (alphanumeric only, lowercase)
             return ''.join(c.lower() for c in device_name if c.isalnum()) or canonic_id[:16]
         
+        logger.warning(f"No Traccar ID mapping for device '{device_name}' (canonic ID: {canonic_id})")
         return None
     
     def validate(self) -> bool:
@@ -263,6 +264,7 @@ async def run_polling_loop(config: Config):
                         logger.info(f"Skipping older location for device {device_id}")
                         continue
                     last_timestamps[device_id] = ts
+
                     await send_to_traccar(
                         client=client,
                         config=config,
@@ -274,7 +276,6 @@ async def run_polling_loop(config: Config):
                         accuracy=loc['accuracy'],
                         is_own_report=loc['is_own_report']
                     )
-                
                 elapsed = time.time() - start_time
                 logger.info(f"Polling cycle complete. Processed {len(locations)} locations in {elapsed:.1f}s")
                 
