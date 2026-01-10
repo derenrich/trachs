@@ -139,9 +139,10 @@ class FcmPushClientConfig:  # pylint:disable=too-many-instance-attributes
     heartbeat_ack_timeout: float = 5
     """Time in seconds to wait for a heartbeat ack before resetting."""
 
-    abort_on_sequential_error_count: int | None = 3
+    abort_on_sequential_error_count: int | None = None
     """Number of sequential errors of the same time to wait before aborting.
-        If set to None the client will not abort."""
+        If set to None the client will not abort. Defaults to None to allow
+        recovery from temporary network issues."""
 
     monitor_interval: float = 1
     """Time in seconds for the monitor task to fire and check for heartbeats,
@@ -234,7 +235,11 @@ class FcmPushClient:  # pylint:disable=too-many-instance-attributes
         if writer:
             writer.close()
             with contextlib.suppress(Exception):
-                await writer.wait_closed()
+                try:
+                    # Use timeout to prevent indefinite hangs on SSL shutdown
+                    await asyncio.wait_for(writer.wait_closed(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    _logger.debug("SSL shutdown timeout, continuing anyway")
 
     async def _reset(self) -> None:
         if (

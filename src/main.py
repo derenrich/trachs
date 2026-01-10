@@ -243,48 +243,56 @@ async def run_polling_loop(config: Config):
     # This avoids "Cannot run the event loop while another loop is running" errors
     executor = ThreadPoolExecutor(max_workers=1)
     
-    async with httpx.AsyncClient(headers={"User-Agent": "Trachs"}) as client:
-        last_timestamps = dict()
-        while True:
-            try:
-                logger.info("Starting polling cycle...")
-                start_time = time.time()
-                
-                # Poll for locations in a thread pool to avoid event loop conflicts
-                # The Google API code uses its own asyncio loops internally
-                loop = asyncio.get_event_loop()
-                locations = await loop.run_in_executor(executor, poll_device_locations, config)
-                
-                # Send each location to Traccar
-                for loc in locations:
-                    device_id = loc['traccar_id']
-                    ts = loc['timestamp']
+    try:
+        async with httpx.AsyncClient(headers={"User-Agent": "Trachs"}) as client:
+            last_timestamps = dict()
+            while True:
+                try:
+                    logger.info("Starting polling cycle...")
+                    start_time = time.time()
+                    
+                    # Poll for locations in a thread pool to avoid event loop conflicts
+                    # The Google API code uses its own asyncio loops internally
+                    loop = asyncio.get_event_loop()
+                    locations = await loop.run_in_executor(executor, poll_device_locations, config)
+                    
+                    # Send each location to Traccar
+                    for loc in locations:
+                        device_id = loc['traccar_id']
+                        ts = loc['timestamp']
 
-                    if device_id in last_timestamps and ts <= last_timestamps[device_id]:
-                        logger.info(f"Skipping older location for device {device_id}")
-                        continue
-                    last_timestamps[device_id] = ts
+                        if device_id in last_timestamps and ts <= last_timestamps[device_id]:
+                            logger.info(f"Skipping older location for device {device_id}")
+                            continue
+                        last_timestamps[device_id] = ts
 
-                    await send_to_traccar(
-                        client=client,
-                        config=config,
-                        device_id=device_id,
-                        latitude=loc['latitude'],
-                        longitude=loc['longitude'],
-                        altitude=loc['altitude'],
-                        timestamp=ts,
-                        accuracy=loc['accuracy'],
-                        is_own_report=loc['is_own_report']
-                    )
-                elapsed = time.time() - start_time
-                logger.info(f"Polling cycle complete. Processed {len(locations)} locations in {elapsed:.1f}s")
+                        await send_to_traccar(
+                            client=client,
+                            config=config,
+                            device_id=device_id,
+                            latitude=loc['latitude'],
+                            longitude=loc['longitude'],
+                            altitude=loc['altitude'],
+                            timestamp=ts,
+                            accuracy=loc['accuracy'],
+                            is_own_report=loc['is_own_report']
+                        )
+                    elapsed = time.time() - start_time
+                    logger.info(f"Polling cycle complete. Processed {len(locations)} locations in {elapsed:.1f}s")
+                    
+                except asyncio.CancelledError:
+                    logger.info("Polling loop cancelled")
+                    raise
+                except Exception as e:
+                    logger.error(f"Error in polling loop: {e}", exc_info=True)
                 
-            except Exception as e:
-                logger.error(f"Error in polling loop: {e}", exc_info=True)
-            
-            # Wait for next poll
-            logger.info(f"Sleeping for {config.poll_interval_seconds} seconds...")
-            await asyncio.sleep(config.poll_interval_seconds)
+                # Wait for next poll
+                logger.info(f"Sleeping for {config.poll_interval_seconds} seconds...")
+                await asyncio.sleep(config.poll_interval_seconds)
+    finally:
+        # Properly shut down the thread pool executor
+        executor.shutdown(wait=True)
+        logger.info("Thread pool executor shut down")
 
 
 def main():
@@ -302,7 +310,12 @@ def main():
     try:
         asyncio.run(run_polling_loop(config))
     except KeyboardInterrupt:
-        logger.info("Shutting down...")
+        logger.info("Received shutdown signal, cleaning up...")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}", exc_info=True)
+        sys.exit(1)
+    finally:
+        logger.info("Trachs service shut down")
 
 
 if __name__ == '__main__':
