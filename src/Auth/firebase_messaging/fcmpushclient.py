@@ -401,18 +401,45 @@ class FcmPushClient:  # pylint:disable=too-many-instance-attributes
                 await self._reset()
 
     @staticmethod
+    def _decode_urlsafe_b64(value: str, field_name: str) -> bytes:
+        # WebPush values are often unpadded base64url; add required padding.
+        encoded = value.strip().encode("ascii")
+        padded = encoded + (b"=" * (-len(encoded) % 4))
+        try:
+            return urlsafe_b64decode(padded)
+        except Exception as ex:
+            raise ValueError(
+                f"Invalid base64url value for {field_name}: {value!r}"
+            ) from ex
+
+    @staticmethod
+    def _extract_app_data_param(raw_value: str, param_name: str) -> str:
+        expected = f"{param_name}="
+        normalized = raw_value.replace(";", ",")
+        for part in normalized.split(","):
+            part = part.strip()
+            if part.startswith(expected):
+                return part[len(expected) :]
+        if "=" not in raw_value:
+            # Some payloads send only the bare value.
+            return raw_value.strip()
+        raise ValueError(
+            f"couldn't parse parameter {param_name!r} from app_data {raw_value!r}"
+        )
+
+    @staticmethod
     def _decrypt_raw_data(
         credentials: dict[str, dict[str, str]],
         crypto_key_str: str,
         salt_str: str,
         raw_data: bytes,
     ) -> bytes:
-        crypto_key = urlsafe_b64decode(crypto_key_str.encode("ascii"))
-        salt = urlsafe_b64decode(salt_str.encode("ascii"))
+        crypto_key = FcmPushClient._decode_urlsafe_b64(crypto_key_str, "crypto-key")
+        salt = FcmPushClient._decode_urlsafe_b64(salt_str, "encryption")
         der_data_str = credentials["keys"]["private"]
-        der_data = urlsafe_b64decode(der_data_str.encode("ascii") + b"========")
+        der_data = FcmPushClient._decode_urlsafe_b64(der_data_str, "private key")
         secret_str = credentials["keys"]["secret"]
-        secret = urlsafe_b64decode(secret_str.encode("ascii") + b"========")
+        secret = FcmPushClient._decode_urlsafe_b64(secret_str, "auth secret")
         privkey = load_der_private_key(
             der_data, password=None, backend=default_backend()
         )
@@ -454,8 +481,10 @@ class FcmPushClient:  # pylint:disable=too-many-instance-attributes
         ):
             # The deleted_messages message does not contain data.
             return
-        crypto_key = self._app_data_by_key(msg, "crypto-key")[3:]  # strip dh=
-        salt = self._app_data_by_key(msg, "encryption")[5:]  # strip salt=
+        crypto_key = self._extract_app_data_param(
+            self._app_data_by_key(msg, "crypto-key"), "dh"
+        )
+        salt = self._extract_app_data_param(self._app_data_by_key(msg, "encryption"), "salt")
         subtype = self._app_data_by_key(msg, "subtype")
         if TYPE_CHECKING:
             assert self.credentials
@@ -471,6 +500,7 @@ class FcmPushClient:  # pylint:disable=too-many-instance-attributes
         decrypted = self._decrypt_raw_data(
             self.credentials, crypto_key, salt, msg.raw_data
         )
+        decrypted_json: dict[str, Any] | None = None
         with contextlib_suppress(json.JSONDecodeError, ValueError):
             decrypted_json = json.loads(decrypted.decode("utf-8"))
 
