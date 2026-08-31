@@ -52,15 +52,51 @@ class FcmReceiver:
         if not self._listening:
             self._start_listener_in_background()
 
-        self.location_update_callbacks.append(callback)
+        if callback not in self.location_update_callbacks:
+            self.location_update_callbacks.append(callback)
 
         return self.credentials['fcm']['registration']['token']
 
 
+    def unregister_callback(self, callback):
+        """Remove a single location update callback.
+
+        The FCM listener is intentionally kept running between polls. Tearing
+        down the event loop/thread on every request leaks file descriptors
+        (each new event loop allocates a self-pipe that is never closed), so
+        individual requests should unregister their callback rather than call
+        stop_listening().
+        """
+        try:
+            self.location_update_callbacks.remove(callback)
+        except ValueError:
+            pass
+
+
     def stop_listening(self):
+        """Fully tear down the background listener, loop and thread.
+
+        Only intended for shutdown. Normal per-request cleanup should use
+        unregister_callback() so the persistent listener stays alive.
+        """
         if self._loop and self._loop.is_running():
-            asyncio.run_coroutine_threadsafe(self.pc.stop(), self._loop)
+            try:
+                future = asyncio.run_coroutine_threadsafe(self.pc.stop(), self._loop)
+                future.result(timeout=10)
+            except Exception:
+                pass
+            # Stop the event loop and join its thread so its file descriptors
+            # (self-pipe, sockets) are actually released.
+            self._loop.call_soon_threadsafe(self._loop.stop)
+            if self._loop_thread is not None:
+                self._loop_thread.join(timeout=10)
+            if not self._loop.is_running():
+                self._loop.close()
+
+        self._loop = None
+        self._loop_thread = None
         self._listening = False
+        self.location_update_callbacks = []
 
 
     def get_android_id(self):
@@ -86,7 +122,9 @@ class FcmReceiver:
             # Convert to hex string
             hex_string = binascii.hexlify(decoded_bytes).decode('utf-8')
 
-            for callback in self.location_update_callbacks:
+            # Snapshot the list: callbacks are (un)registered from the polling
+            # thread while this runs in the listener's event loop thread.
+            for callback in list(self.location_update_callbacks):
                 callback(hex_string)
         else:
             print("[FCMReceiver] Payload not found in the notification.")
@@ -125,6 +163,9 @@ class FcmReceiver:
 
     def _start_listener_in_background(self):
         """Start FCM listener in a background thread with its own event loop"""
+        if self._listening and self.credentials:
+            return self.credentials['gcm']['android_id']
+
         self._loop = asyncio.new_event_loop()
         self._loop_thread = threading.Thread(target=self._run_event_loop_in_thread, daemon=True)
         self._loop_thread.start()

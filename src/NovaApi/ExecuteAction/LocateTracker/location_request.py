@@ -69,8 +69,10 @@ def get_location_data_for_device(canonic_device_id, name):
         locations = decrypt_location_response_locations(result)
         return locations
     finally:
-        # Clean up: stop the FCM listener when done
-        fcm_receiver.stop_listening()
+        # Clean up: unregister only this request's callback. The FCM listener
+        # is kept running between requests/polls on purpose -- tearing it down
+        # each time leaked event loops, threads and file descriptors.
+        fcm_receiver.unregister_callback(handle_location_response)
 
 if __name__ == '__main__':
     get_location_data_for_device(get_example_data("sample_canonic_device_id"), "Test")

@@ -834,9 +834,19 @@ class FcmPushClient:  # pylint:disable=too-many-instance-attributes
 
                 self.do_listen = False
 
+                current_task = asyncio.current_task()
                 for task in self.tasks:
-                    if not task.done():
+                    if current_task != task and not task.done():
                         task.cancel()
+
+                # Wait for the cancelled tasks to actually finish so their
+                # sockets/writers are closed before we return. Without this the
+                # underlying connection could linger and leak file descriptors.
+                pending = [t for t in self.tasks if t is not current_task]
+                if pending:
+                    await asyncio.gather(*pending, return_exceptions=True)
+
+                self.tasks = []
 
             finally:
                 self.run_state = FcmPushClientRunState.STOPPED
