@@ -49,13 +49,29 @@ class FcmReceiver:
 
     def register_for_location_updates(self, callback):
 
-        if not self._listening:
+        if not self._is_listening():
             self._start_listener_in_background()
 
         if callback not in self.location_update_callbacks:
             self.location_update_callbacks.append(callback)
 
         return self.credentials['fcm']['registration']['token']
+
+
+    def _is_listening(self):
+        """Return True only if the background listener is actually alive.
+
+        ``pc.do_listen`` stays True across transient reconnects/resets and only
+        goes False once the client has permanently terminated, so it (together
+        with a running loop) is a reliable liveness signal -- unlike
+        ``is_started()`` which is briefly False mid-reset.
+        """
+        return (
+            self._listening
+            and self._loop is not None
+            and self._loop.is_running()
+            and self.pc.do_listen
+        )
 
 
     def unregister_callback(self, callback):
@@ -162,13 +178,17 @@ class FcmReceiver:
         self._loop.run_forever()
 
     def _start_listener_in_background(self):
-        """Start FCM listener in a background thread with its own event loop"""
-        if self._listening and self.credentials:
-            return self.credentials['gcm']['android_id']
+        """Start (or restart) the FCM listener in a background thread.
 
-        self._loop = asyncio.new_event_loop()
-        self._loop_thread = threading.Thread(target=self._run_event_loop_in_thread, daemon=True)
-        self._loop_thread.start()
+        Reuses the existing background event loop if it is still running so a
+        restart after the listener terminated does not leak the old loop/thread
+        (and its file descriptors). Only creates a fresh loop when there isn't
+        a live one.
+        """
+        if self._loop is None or not self._loop.is_running():
+            self._loop = asyncio.new_event_loop()
+            self._loop_thread = threading.Thread(target=self._run_event_loop_in_thread, daemon=True)
+            self._loop_thread.start()
 
         # Register for FCM first (blocking)
         temp_loop = asyncio.new_event_loop()

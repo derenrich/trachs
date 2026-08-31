@@ -744,16 +744,14 @@ class FcmPushClient:  # pylint:disable=too-many-instance-attributes
                         await self._handle_message(msg)
 
                 except (OSError, EOFError) as osex:
+                    recoverable_read_errors = (
+                        ConnectionResetError,
+                        TimeoutError,
+                        asyncio.IncompleteReadError,
+                        ssl.SSLError,
+                    )
                     if (
-                        isinstance(
-                            osex,
-                            (
-                                ConnectionResetError,
-                                TimeoutError,
-                                asyncio.IncompleteReadError,
-                                ssl.SSLError,
-                            ),
-                        )
+                        isinstance(osex, recoverable_read_errors)
                         and self.run_state == FcmPushClientRunState.RESETTING
                     ):
                         if (
@@ -769,6 +767,17 @@ class FcmPushClient:  # pylint:disable=too-many-instance-attributes
                                 "Expected read error during reset: %s",
                                 type(osex).__name__,
                             )
+                    elif isinstance(osex, recoverable_read_errors):
+                        # The peer dropped a live connection (e.g. an idle
+                        # long-lived connection being recycled by the server).
+                        # This is expected and recovered from by reconnecting,
+                        # so log it quietly rather than as an ERROR traceback.
+                        _logger.info(
+                            "Connection to MCS endpoint lost (%s), reconnecting",
+                            type(osex).__name__,
+                        )
+                        if self._try_increment_error_count(ErrorType.CONNECTION):
+                            await self._reset()
                     else:
                         _logger.exception("Unexpected exception during read\n")
                         if self._try_increment_error_count(ErrorType.CONNECTION):
